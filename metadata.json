@@ -1,0 +1,6 @@
+{
+  "name": "NYK",
+  "description": "A minimalist blog built with React and Markdown.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
