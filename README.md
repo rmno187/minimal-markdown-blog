@@ -94,8 +94,8 @@ Vercel will automatically build and publish your new post!
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/nyk-blog.git
-cd nyk-blog
+git clone https://github.com/rmno187/minimal-markdown-blog
+cd minimal-markdown-blog
 
 # Install dependencies
 npm install
