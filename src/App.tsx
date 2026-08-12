@@ -141,6 +141,18 @@ export default function App() {
     return getPageBySlug(currentPage);
   }, [currentPage]);
 
+  // Sync document title based on siteConfig.tabTitle or active page/article
+  useEffect(() => {
+    const baseTitle = siteConfig.tabTitle || siteConfig.siteName || 'NYK';
+    if (currentPage === 'article-detail' && selectedArticle) {
+      document.title = `${selectedArticle.title} — ${siteConfig.siteName}`;
+    } else if (activePage) {
+      document.title = `${activePage.title} — ${siteConfig.siteName}`;
+    } else {
+      document.title = baseTitle;
+    }
+  }, [currentPage, selectedArticle, activePage]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200">
       {/* Navigation Header */}
@@ -240,4 +252,5 @@ export default function App() {
     </div>
   );
 }
+
 

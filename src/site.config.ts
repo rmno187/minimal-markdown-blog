@@ -1,5 +1,6 @@
 export interface SiteConfig {
   siteName: string;
+  tabTitle?: string;
   heroTitle: string;
   heroTagline: string;
   author: string;
@@ -44,11 +45,12 @@ export interface SiteConfig {
  * When separating the public publishing engine from private content, override these values in your config.
  */
 export const siteConfig: SiteConfig = {
-  siteName: 'NYK.MD',
+  siteName: 'NYK',
+  tabTitle: 'NYK — Minimalist Publishing',
   heroTitle: 'SIMPLICITY.',
-  heroTagline: 'A minimalist publishing system built on pure Markdown, clean typography, and quiet web design.',
+  heroTagline: 'In a world where life seems to grow more complicated by the day, I work to bring simplicity back.',
   author: 'NYK',
-  description: 'A minimalist publishing system built on pure Markdown, clean typography, and quiet web design.',
+  description: 'In a world where life seems to grow more complicated by the day, I work to bring simplicity back.',
   logo: {
     url: '/logo.svg',
     alt: 'NYK Minimalist Logo',
@@ -57,7 +59,7 @@ export const siteConfig: SiteConfig = {
     url: '/favicon.svg',
   },
   social: {
-    email: 'sample@mail.com',
+    email: 'thenykblog@gmail.com',
     github: 'https://github.com/rmno18',
     twitter: '',
     tiktok: '',
@@ -75,3 +77,4 @@ export const siteConfig: SiteConfig = {
     allowToggle: true,
   },
 };
+
