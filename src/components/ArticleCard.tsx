@@ -36,14 +36,14 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onSelect }) =
       </p>
 
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-[var(--border-color)]/60 text-xs">
-        <div className="flex flex-wrap gap-1.5">
-          {article.tags.map((tag) => (
-            <span
-              key={tag}
-              className="font-mono text-[11px] px-2 py-0.5 rounded bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-color)]"
-            >
-              #{tag}
-            </span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[var(--text-muted)]">
+          {article.tags.map((tag, idx) => (
+            <React.Fragment key={tag}>
+              {idx > 0 && <span className="opacity-40 select-none">·</span>}
+              <span className="text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors">
+                {tag}
+              </span>
+            </React.Fragment>
           ))}
         </div>
 

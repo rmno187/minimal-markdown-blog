@@ -1,24 +1,77 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getAllArticles, getArticleBySlug } from './lib/articles';
+import { getAllArticles, getArticleBySlug, getAllPages, getPageBySlug } from './lib/articles';
 import { NavigationPage, Article } from './types';
+import { siteConfig } from './site.config';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ArticleCard } from './components/ArticleCard';
 import { ArticleView } from './components/ArticleView';
-import { AboutView } from './components/AboutView';
-import { ContactView } from './components/ContactView';
+import { PageView } from './components/PageView';
 import { MarkdownEditorModal } from './components/MarkdownEditorModal';
-import { Search, X, Tag, FileText, Sparkles, BookOpen } from 'lucide-react';
+import { FileText, Sparkles, BookOpen } from 'lucide-react';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<NavigationPage>('articles');
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('nyk_theme') === 'dark';
   });
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  // Sync document favicon from siteConfig
+  useEffect(() => {
+    const faviconUrl = siteConfig.favicon?.url || '/favicon.svg';
+    let link: HTMLLinkElement | null = document.querySelector("#site-favicon") || document.querySelector("link[rel*='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.id = 'site-favicon';
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = faviconUrl;
+  }, []);
+
+  // Check URL route for secret admin /draft route & listen to shortcut
+  useEffect(() => {
+    const checkDraftRoute = () => {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      const search = window.location.search.toLowerCase();
+
+      if (path === '/draft' || path.startsWith('/draft/') || hash === '#draft' || search.includes('draft')) {
+        setIsEditorOpen(true);
+      }
+    };
+
+    checkDraftRoute();
+    window.addEventListener('popstate', checkDraftRoute);
+
+    // Keyboard shortcut (Ctrl+Alt+D or Cmd+Shift+D) for discreet access
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') || (e.metaKey && e.shiftKey && e.key.toLowerCase() === 'd')) {
+        e.preventDefault();
+        setIsEditorOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('popstate', checkDraftRoute);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleCloseEditor = () => {
+    setIsEditorOpen(false);
+    // Clean up /draft from address bar if opened via route
+    if (window.location.pathname.toLowerCase() === '/draft' || window.location.hash.toLowerCase() === '#draft') {
+      window.history.pushState({}, '', '/');
+    }
+  };
 
   // Apply dark mode class to root document
   useEffect(() => {
@@ -37,6 +90,10 @@ export default function App() {
 
   const allArticles = useMemo(() => {
     return getAllArticles();
+  }, []);
+
+  const allPages = useMemo(() => {
+    return getAllPages();
   }, []);
 
   // Collect all unique tags across articles
@@ -79,86 +136,56 @@ export default function App() {
     return getArticleBySlug(selectedSlug);
   }, [selectedSlug]);
 
+  const activePage = useMemo(() => {
+    if (currentPage === 'articles' || currentPage === 'article-detail') return null;
+    return getPageBySlug(currentPage);
+  }, [currentPage]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200">
       {/* Navigation Header */}
       <Navbar
         currentPage={currentPage}
+        pages={allPages}
         onNavigate={handleNavigate}
         isDarkMode={isDarkMode}
         onToggleDarkMode={toggleDarkMode}
-        onOpenEditor={() => setIsEditorOpen(true)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        isSearchOpen={isSearchOpen}
+        onToggleSearch={() =>
+          setIsSearchOpen((prev) => {
+            const next = !prev;
+            if (!next) {
+              setSearchQuery('');
+              setSelectedTag(null);
+            }
+            return next;
+          })
+        }
+        allTags={allTags}
+        selectedTag={selectedTag}
+        onSelectTag={(tag) => {
+          setSelectedTag(tag);
+        }}
       />
 
       {/* Main Page Container */}
       <div className="flex-1">
         {currentPage === 'articles' && (
-          <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
-            {/* Header / Hero */}
-            <div className="mb-12 border-b border-[var(--border-color)] pb-10">
-              <div className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-[0.3em] mb-4">
-                Minimalist Journal • Pure Markdown
+          <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            {/* Header / Hero (hidden when search box is open) */}
+            {!isSearchOpen && (
+              <div className="mb-12 border-b border-[var(--border-color)] pb-10">
+                <h1 className="text-5xl sm:text-7xl font-black tracking-tighter leading-[0.9] text-[var(--text-primary)] mb-6">
+                  {siteConfig.heroTitle}
+                </h1>
+
+                <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed max-w-2xl font-normal">
+                  {siteConfig.heroTagline}
+                </p>
               </div>
-
-              <h1 className="text-5xl sm:text-7xl font-black tracking-tighter leading-[0.9] text-[var(--text-primary)] mb-6">
-                THE SYNTAX OF MINIMALISM.
-              </h1>
-
-              <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed max-w-2xl font-normal">
-                An intentional, distraction-free journal. Pure Markdown articles saved directly in Git and published on Vercel.
-              </p>
-
-              {/* Search & Filter Controls */}
-              <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search articles by keyword or topic..."
-                    className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Tag Pills Filter */}
-                {allTags.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      onClick={() => setSelectedTag(null)}
-                      className={`text-xs font-mono px-3 py-2 rounded-lg border transition-colors ${
-                        selectedTag === null
-                          ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)] font-bold'
-                          : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-[var(--text-primary)]'
-                      }`}
-                    >
-                      All Tags
-                    </button>
-                    {allTags.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                        className={`text-xs font-mono px-3 py-2 rounded-lg border transition-colors ${
-                          selectedTag === tag
-                            ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)] font-bold'
-                            : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-[var(--text-primary)]'
-                        }`}
-                      >
-                        #{tag}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
 
             {/* Articles List */}
             {filteredArticles.length > 0 ? (
@@ -198,24 +225,19 @@ export default function App() {
           </main>
         )}
 
-        {currentPage === 'about' && (
+        {activePage && (
           <main>
-            <AboutView />
-          </main>
-        )}
-
-        {currentPage === 'contact' && (
-          <main>
-            <ContactView />
+            <PageView page={activePage} onBack={() => handleNavigate('articles')} />
           </main>
         )}
       </div>
 
-      {/* Markdown Draft Utility Modal */}
-      <MarkdownEditorModal isOpen={isEditorOpen} onClose={() => setIsEditorOpen(false)} />
+      {/* Markdown Draft Utility Modal (Accessible via /draft or Ctrl+Alt+D) */}
+      <MarkdownEditorModal isOpen={isEditorOpen} onClose={handleCloseEditor} />
 
       {/* Global Footer */}
       <Footer />
     </div>
   );
 }
+

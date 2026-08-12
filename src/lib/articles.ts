@@ -1,25 +1,44 @@
-import { Article, ArticleFrontmatter } from '../types';
+import { ContentItem, ArticleFrontmatter } from '../types';
 
 /**
  * Custom YAML frontmatter parser for browser & static builds
  */
 function parseFrontmatter(rawContent: string): { frontmatter: ArticleFrontmatter; content: string } {
-  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
-  const match = rawContent.match(frontmatterRegex);
+  const cleanContent = rawContent.trimStart();
 
-  if (!match) {
+  let yamlBlock = '';
+  let markdownBody = cleanContent;
+  let hasFrontmatter = false;
+
+  // Standard case: Starts with ---
+  const standardRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
+  const standardMatch = cleanContent.match(standardRegex);
+
+  if (standardMatch) {
+    yamlBlock = standardMatch[1];
+    markdownBody = standardMatch[2];
+    hasFrontmatter = true;
+  } else {
+    // Fallback case: Starts directly with frontmatter fields
+    const fallbackRegex = /^((?:title|date|description|author|tags|featured|readTime|type|slug):[\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/i;
+    const fallbackMatch = cleanContent.match(fallbackRegex);
+    if (fallbackMatch) {
+      yamlBlock = fallbackMatch[1];
+      markdownBody = fallbackMatch[2];
+      hasFrontmatter = true;
+    }
+  }
+
+  if (!hasFrontmatter) {
     return {
       frontmatter: {
-        title: 'Untitled Article',
-        date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        title: 'Untitled',
+        date: '',
         description: '',
       },
       content: rawContent,
     };
   }
-
-  const yamlBlock = match[1];
-  const markdownBody = match[2];
 
   const frontmatter: Record<string, any> = {};
   const lines = yamlBlock.split('\n');
@@ -58,13 +77,16 @@ function parseFrontmatter(rawContent: string): { frontmatter: ArticleFrontmatter
 
   return {
     frontmatter: {
-      title: frontmatter.title || 'Untitled Article',
-      date: frontmatter.date || 'Recent',
+      title: frontmatter.title || 'Untitled',
+      date: frontmatter.date || '',
       description: frontmatter.description || '',
       readTime: frontmatter.readTime,
       author: frontmatter.author || 'NYK',
       tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
       featured: Boolean(frontmatter.featured),
+      type: frontmatter.type === 'page' ? 'page' : frontmatter.type === 'post' ? 'post' : undefined,
+      slug: frontmatter.slug,
+      hideFromMenu: Boolean(frontmatter.hideFromMenu || frontmatter.hidden || frontmatter.hideFromNav),
     },
     content: markdownBody,
   };
@@ -82,7 +104,9 @@ function calculateReadTime(text: string): string {
 /**
  * Generates a clean URL slug from article title or file path
  */
-function createSlug(filePath: string, title: string): string {
+function createSlug(filePath: string, title: string, explicitSlug?: string): string {
+  if (explicitSlug) return explicitSlug.toLowerCase();
+
   const fileName = filePath.split('/').pop()?.replace('.md', '') || '';
   if (fileName) {
     return fileName
@@ -97,43 +121,83 @@ function createSlug(filePath: string, title: string): string {
 }
 
 /**
- * Load all markdown files from /src/articles/*.md via Vite eager globbing
+ * Discover all markdown files from /content and /src/content
  */
-export function getAllArticles(): Article[] {
-  const markdownFiles = import.meta.glob('/src/articles/*.md', { query: '?raw', eager: true }) as Record<
+export function getAllContent(): ContentItem[] {
+  const contentGlob = import.meta.glob('/content/**/*.md', { query: '?raw', eager: true }) as Record<
+    string,
+    { default: string } | string
+  >;
+  const srcContentGlob = import.meta.glob('/src/content/**/*.md', { query: '?raw', eager: true }) as Record<
     string,
     { default: string } | string
   >;
 
-  const articles: Article[] = [];
+  const markdownFiles = { ...contentGlob, ...srcContentGlob };
+
+  const items: ContentItem[] = [];
+  const seenSlugs = new Set<string>();
 
   for (const path in markdownFiles) {
     const rawModule = markdownFiles[path];
     const rawContent = typeof rawModule === 'string' ? rawModule : rawModule.default || '';
 
     const { frontmatter, content } = parseFrontmatter(rawContent);
-    const slug = createSlug(path, frontmatter.title);
+    const slug = createSlug(path, frontmatter.title, frontmatter.slug);
+
+    // Deduplicate if same file is imported in multiple matched paths
+    if (seenSlugs.has(slug)) continue;
+    seenSlugs.add(slug);
+
+    // Determine content type (post vs page)
+    let type: 'post' | 'page' = 'post';
+    if (frontmatter.type) {
+      type = frontmatter.type;
+    } else if (
+      path.includes('/pages/') ||
+      path.endsWith('/about.md') ||
+      path.endsWith('/contact.md') ||
+      ['about', 'contact', 'uses', 'now'].includes(slug)
+    ) {
+      type = 'page';
+    }
+
     const readTime = frontmatter.readTime || calculateReadTime(content);
 
-    articles.push({
+    items.push({
       slug,
+      type,
       title: frontmatter.title,
-      date: frontmatter.date,
-      description: frontmatter.description,
+      date: frontmatter.date || '',
+      description: frontmatter.description || '',
       readTime,
-      author: frontmatter.author || 'NYK Editorial',
+      author: frontmatter.author || 'NYK',
       tags: frontmatter.tags || [],
       featured: frontmatter.featured || false,
+      hideFromMenu: frontmatter.hideFromMenu || false,
       content,
       raw: rawContent,
     });
   }
 
-  // Sort articles chronologically or by featured state
-  return articles.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+  return items;
 }
 
-export function getArticleBySlug(slug: string): Article | undefined {
-  const articles = getAllArticles();
-  return articles.find((art) => art.slug === slug);
+export function getAllArticles(): ContentItem[] {
+  return getAllContent()
+    .filter((item) => item.type === 'post')
+    .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
 }
+
+export function getArticleBySlug(slug: string): ContentItem | undefined {
+  return getAllArticles().find((art) => art.slug === slug);
+}
+
+export function getAllPages(): ContentItem[] {
+  return getAllContent().filter((item) => item.type === 'page');
+}
+
+export function getPageBySlug(slug: string): ContentItem | undefined {
+  return getAllPages().find((page) => page.slug === slug);
+}
+

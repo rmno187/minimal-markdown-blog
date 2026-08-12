@@ -99,40 +99,11 @@ export const ArticleView: React.FC<ArticleViewProps> = ({ article, onBack }) => 
             className="flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to All Articles</span>
+            <span>Articles</span>
           </button>
 
           <div className="flex items-center space-x-4 text-[var(--text-secondary)]">
-            {/* Font size toggle */}
-            <div className="flex items-center space-x-1 border border-[var(--border-color)] rounded p-0.5">
-              <button
-                onClick={() => setFontSize('normal')}
-                className={`px-1.5 py-0.5 rounded text-[11px] ${
-                  fontSize === 'normal' ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] font-bold' : ''
-                }`}
-                title="Standard Text Size"
-              >
-                A
-              </button>
-              <button
-                onClick={() => setFontSize('large')}
-                className={`px-1.5 py-0.5 rounded text-xs ${
-                  fontSize === 'large' ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] font-bold' : ''
-                }`}
-                title="Large Text Size"
-              >
-                A+
-              </button>
-              <button
-                onClick={() => setFontSize('xlarge')}
-                className={`px-1.5 py-0.5 rounded text-sm ${
-                  fontSize === 'xlarge' ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] font-bold' : ''
-                }`}
-                title="Extra Large Text Size"
-              >
-                A++
-              </button>
-            </div>
+            
 
             {/* Share / Copy link */}
             <button
@@ -160,14 +131,14 @@ export const ArticleView: React.FC<ArticleViewProps> = ({ article, onBack }) => 
             {article.description}
           </p>
 
-          <div className="flex flex-wrap items-center gap-2 pt-2">
-            {article.tags.map((tag) => (
-              <span
-                key={tag}
-                className="font-mono text-xs px-2.5 py-1 rounded bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-color)]"
-              >
-                #{tag}
-              </span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[var(--text-muted)] pt-2">
+            {article.tags.map((tag, idx) => (
+              <React.Fragment key={tag}>
+                {idx > 0 && <span className="opacity-40 select-none">·</span>}
+                <span className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                  {tag}
+                </span>
+              </React.Fragment>
             ))}
           </div>
         </header>
@@ -204,20 +175,7 @@ export const ArticleView: React.FC<ArticleViewProps> = ({ article, onBack }) => 
 
         {/* Article Footer & File Path Reference */}
         <footer className="mt-16 pt-8 border-t border-[var(--border-color)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs font-mono text-[var(--text-muted)]">
-          <div>
-            <span>Article Source File: </span>
-            <code className="px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] text-[var(--text-primary)]">
-              src/articles/{article.slug}.md
-            </code>
-          </div>
-
-          <button
-            onClick={onBack}
-            className="flex items-center space-x-1 text-[var(--text-primary)] font-semibold hover:underline"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to index</span>
-          </button>
+   
         </footer>
       </article>
     </div>
